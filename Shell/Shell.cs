@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using SystemCmd = Core.Commands.SystemCommands;
+using Execute = Core.execute;
 
 namespace Shell
 {
@@ -18,7 +19,6 @@ namespace Shell
     public class Shell
     {
         //declaring variables
-        public static string dlocation = null;
         private static readonly string s_accountName = Environment.UserName;    //extract current loged username
         private static readonly string s_computerName = Environment.MachineName; //extract machine name
         private static string s_input = null;
@@ -39,33 +39,7 @@ namespace Shell
 
         //-------------------------------
         //Define the shell commands 
-        private Dictionary<string, string> Aliases = new Dictionary<string, string>
-        {
-            { "ls", @".\Tools\FileSystem\ListDirectories.exe" },
-            { "clear", @".\Tools\Internal\Clear.exe" },
-            { "extip", @".\Tools\Network\Externalip.exe" },
-            { "ispeed", @".\Tools\Network\InternetSpeed.exe" },
-            { "icheck", @".\Tools\Network\CheckDomain.exe" },
-            { "md5", @".\Tools\FileSystem\CheckMD5.exe"  },
-            { "fcopy", @".\Tools\FileSystem\FCopy.exe"  },
-            { "fmove", @".\Tools\FileSystem\FMove.exe"  },
-            { "frename", @".\Tools\FileSystem\FRename.exe"  },
-            { "cmd", "cmd"  },
-            { "ps", "powershell"  },
-            { "cd", @".\Tools\FileSystem\CDirectory.exe"  },
-            { "cat", @".\Tools\FileSystem\StringView.exe"  },
-            { "del", @".\Tools\FileSystem\Delete.exe"  },
-            { "mkdir", @".\Tools\FileSystem\MakeDirectory.exe"  },
-            { "mkfile", @".\Tools\FileSystem\MKFile.exe"  },
-            { "speedtest", @".\Tools\netcoreapp3.1\TestNet.exe"  },
-            { "email", @".\Tools\Network\eMailS.exe"  },
-            { "wget", @".\Tools\Network\WGet.exe"  },
-            { "edit", @".\Tools\FileSystem\xEditor.exe"  },
-            { "cp", @".\Tools\FileSystem\CheckPermission.exe"  },
-            { "bios", @".\Tools\Hardware\BiosInfo.exe"  },
-            { "sinfo", @".\Tools\Hardware\sdc.exe"  },
-            { "flappy", @".\Tools\Game\FlappyBirds.exe"  }
-        };
+
         //-----------------------
 
         // We check if history file has any data in it.
@@ -174,14 +148,14 @@ namespace Shell
             do
             {
                 //reading current location
-                dlocation = RegistryManagement.regKey_Read(GlobalVariables.regKeyName, GlobalVariables.regCurrentDirectory);
-                if (dlocation == "")
+                Execute.dlocation = RegistryManagement.regKey_Read(GlobalVariables.regKeyName, GlobalVariables.regCurrentDirectory);
+                if (Execute.dlocation == "")
                 {
                     RegistryManagement.regKey_WriteSubkey(GlobalVariables.regKeyName, GlobalVariables.regCurrentDirectory, @"C:\");
                 }
 
                 // We se the color and user loged in on console.
-                SetConsoleUserConnected(dlocation, s_accountName, s_computerName);
+                SetConsoleUserConnected(Execute.dlocation, s_accountName, s_computerName);
 
                 //reading user imput
                 s_input = Console.ReadLine();
@@ -222,7 +196,7 @@ namespace Shell
                     }
                     else
                     {
-                        StartApplication(dlocation + @"\\" + s_input);
+                        StartApplication(Execute.dlocation + @"\\" + s_input);
                     }
                 }
 
@@ -326,16 +300,16 @@ This is the full list of commands that can be used in xTerminal:
 
                             if (_ch == 1)// check one space char in input
                             {
-                                ExecuteWithArgs(dInput[0], dInput[1], true); //execute commands with 1 arg
+                                Execute.ExecuteWithArgs(dInput[0], dInput[1], true); //execute commands with 1 arg
                             }
                             else if (_ch == 2)// check one space char in input
                             {
-                                ExecuteWithArgs2(dInput[0], dInput[1], dInput[2], true); //execute commands with 2 args
+                                Execute.ExecuteWithArgs2(dInput[0], dInput[1], dInput[2], true); //execute commands with 2 args
                             }
                         }
                         else
                         {
-                            Execute(s_input, true); //run simple command
+                            Execute.Execute(s_input, true); //run simple command
                         }
                     }
                 }
@@ -346,120 +320,9 @@ This is the full list of commands that can be used in xTerminal:
         }
 
 
-        //------------------
 
-        //process execute 
-        public void Execute(string input, bool waitForExit)
-        {
-            if (Aliases.Keys.Contains(input))
-            {
-                var process = new Process();
 
-                if (input == "cmd" || input == "ps")
-                {
-                    process.StartInfo = new ProcessStartInfo(Aliases[input])
-                    {
-                        UseShellExecute = false,
-                        WorkingDirectory = dlocation
-                    };
-                    if (File.Exists(Aliases[input]))
-                    {
-                        process.Start();
 
-                        if (waitForExit)
-                            process.WaitForExit();
-                    }
-                    else
-                        FileSystem.ErrorWriteLine($"Couldn't find file \"{Aliases[input]}\" to execute. Reinstalling should fix the issue ");
-                    return;
-                }
-                process.StartInfo = new ProcessStartInfo(Aliases[input])
-                {
-                    UseShellExecute = false,
-                };
-                if (File.Exists(Aliases[input]))
-                {
-                    process.Start();
-                    if (waitForExit)
-                        process.WaitForExit();
-                }
-                else
-                    FileSystem.ErrorWriteLine($"Couldn't find file \"{Aliases[input]}\" to execute. Reinstalling should fix the issue ");
-                return;
-            }
-
-            // return 1;
-        }
-        //------------------------
-
-        //process execute 
-        public void ProcessExecute(string input, string arguments)
-        {
-            var process = new Process();
-            process.StartInfo = new ProcessStartInfo(input)
-            {
-                Arguments = arguments
-            };
-            if (File.Exists(input))
-                process.Start();
-            else
-                FileSystem.ErrorWriteLine($"Couldn't find file \"{input}\" to execute");
-            return;
-        }
-
-        //process execute  with 1 arg
-        public int ExecuteWithArgs(string input, string args, bool waitForExit)
-        {
-            if (Aliases.Keys.Contains(input))
-            {
-                var process = new Process();
-                process.StartInfo = new ProcessStartInfo(Aliases[input])
-                {
-                    UseShellExecute = false,
-                    Arguments = args
-                };
-
-                if (File.Exists(Aliases[input]))
-                {
-                    process.Start();
-                    if (waitForExit)
-                        process.WaitForExit();
-                }
-                else
-                    FileSystem.ErrorWriteLine($"Couldn't find file \"{Aliases[input]}\" to execute. Reinstalling should fix the issue ");
-
-                return 0;
-            }
-
-            return 1;
-        }
-        //------------------------
-
-        //process execute  with 2 arg
-        public int ExecuteWithArgs2(string input, string args, string args2, bool waitForExit)
-        {
-            if (Aliases.Keys.Contains(input))
-            {
-                var process = new Process();
-                process.StartInfo = new ProcessStartInfo(Aliases[input])
-                {
-                    UseShellExecute = false,
-                    Arguments = args + " " + args2
-                };
-                if (File.Exists(Aliases[input]))
-                {
-                    process.Start();
-                    if (waitForExit)
-                        process.WaitForExit();
-                }
-                else
-                    FileSystem.ErrorWriteLine($"Couldn't find file \"{Aliases[input]}\" to execute. Reinstalling should fix the issue ");
-                return 0;
-            }
-
-            return 1;
-        }
-        //------------------------
 
         // We set the name of the current user logged in and machine on console.
         private static void SetConsoleUserConnected(string currentLocation, string accountName, string computerName)
@@ -558,17 +421,17 @@ This is the full list of commands that can be used in xTerminal:
                     if (inputCommand.Contains(@"\"))
                     {
                         string[] cInput = inputCommand.Split('"');
-                        ExecuteWithArgs2(dInput[0], dInput[1], "\"" + @cInput[1] + "\"", true); //execute commands with 1 arg
+                        Execute.ExecuteWithArgs2(dInput[0], dInput[1], "\"" + @cInput[1] + "\"", true); //execute commands with 1 arg
                     }
                     else
                     {
 
-                        ExecuteWithArgs2(dInput[0], dInput[1], dInput[2], true); //execute commands with 2 arg
+                        Execute.ExecuteWithArgs2(dInput[0], dInput[1], dInput[2], true); //execute commands with 2 arg
                     }
                 }
                 else
                 {
-                    ExecuteWithArgs(dInput[0], dInput[1], true); //execute commands with 1 arg
+                    Execute.ExecuteWithArgs(dInput[0], dInput[1], true); //execute commands with 1 arg
                 }
             }
             catch (Exception e)
@@ -591,7 +454,7 @@ This is the full list of commands that can be used in xTerminal:
                         FileSystem.ErrorWriteLine($"File {dInput[0]} does not exist!");
                         return;
                     }
-                    ProcessExecute(dInput[0], dInput[1]); //execute commands with 2 arg
+                    Execute.ProcessExecute(dInput[0], dInput[1]); //execute commands with 2 arg
                 }
                 else
                 {
@@ -600,7 +463,7 @@ This is the full list of commands that can be used in xTerminal:
                         FileSystem.ErrorWriteLine($"File {dInput[0]} does not exist!");
                         return;
                     }
-                    ProcessExecute(inputCommand, "");
+                    Execute.ProcessExecute(inputCommand, "");
                 }
 
             }
